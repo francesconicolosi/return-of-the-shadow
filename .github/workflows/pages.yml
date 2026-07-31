@@ -1,0 +1,53 @@
+name: Deploy game to GitHub Pages
+
+# Publishes the static web build of "Return of the Shadow" to GitHub Pages on
+# every push to main. The game is pure static files (no build step), so we just
+# assemble the runtime files into a clean _site/ folder and upload that. The
+# desktop/, plans/ and .github/ folders are intentionally left out of the site.
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel an in-progress run.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Assemble static site
+        run: |
+          mkdir -p _site
+          cp index.html editor.html editor.js love-shim.js touch.js battle-theme.mp3 _site/
+          cp -R src _site/src
+          # Disable Jekyll so files/folders starting with _ are served verbatim.
+          touch _site/.nojekyll
+          echo "Contents of _site:"
+          ls -la _site
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
