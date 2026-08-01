@@ -211,7 +211,21 @@
       const p = plats[pi];
       const seed = (pi + 1) * 733 + 5;
       const rng = love.math.newRandomGenerator(seed);
-      if (p.beam) {
+      if (p.beam && level === 6) {
+        // a mossy log / tree-limb branch (canopy + hill walkways)
+        const bh = Math.max(p.h, 10);
+        lg.setColor(0.24, 0.18, 0.12, 1); lg.rectangle('fill', p.x, p.y, p.w, bh);       // bark body
+        lg.setColor(0.15, 0.11, 0.07, 1); lg.rectangle('fill', p.x, p.y + bh - 3, p.w, 3); // shaded underside
+        lg.setColor(0.32, 0.24, 0.15, 0.7);                                                // bark grain
+        for (let gx = p.x + 4; gx < p.x + p.w - 3; gx += 12) lg.rectangle('fill', gx, p.y + 3, 1.5, bh - 5);
+        lg.setColor(0.26, 0.38, 0.18, 1); lg.rectangle('fill', p.x, p.y - 3, p.w, 4);     // moss on top
+        drawGrass(p.x, p.y, p.w, rng);
+        // a couple of hanging leaves off the underside
+        lg.setColor(0.22, 0.34, 0.16, 0.9);
+        for (let lx = p.x + 10; lx < p.x + p.w - 6; lx += 34) {
+          lg.polygon('fill', lx, p.y + bh, lx + 6, p.y + bh + 3, lx + 2, p.y + bh + 9);
+        }
+      } else if (p.beam) {
         lg.setColor(STONE.mid[0], STONE.mid[1], STONE.mid[2], 1);
         lg.rectangle('fill', p.x, p.y, p.w, p.h);
         lg.setColor(STONE.dark[0], STONE.dark[1], STONE.dark[2], 1);
@@ -279,6 +293,65 @@
               lg.setColor(0, 0, 0, 0.4); lg.rectangle('fill', p.x - ww, y + 5, ww + 3, 2);
             }
           }
+        }
+      } else if (level === 6) {
+        // THE ENCHANTED WOOD — climb-over tree trunks and mossy forest ground
+        if (p.climbL || p.climbR) {
+          // a tall tree used as a vertical (climb-over) platform
+          const cx = p.x + p.w / 2;
+          // leafy canopy massed behind/around the trunk top
+          lg.setColor(0.14, 0.22, 0.12, 1);
+          for (let i = 0; i < 6; i++) {
+            const ang = i / 6 * Math.PI * 2;
+            lg.circle('fill', cx + Math.cos(ang) * 46, p.y - 12 + Math.sin(ang) * 26, 34);
+          }
+          lg.setColor(0.21, 0.31, 0.16, 1);
+          for (let i = 0; i < 8; i++) lg.circle('fill', cx + (rng.random() - 0.5) * 96, p.y - 22 - rng.random() * 44, 20 + rng.random() * 12);
+          lg.setColor(0.28, 0.40, 0.20, 0.8);
+          for (let i = 0; i < 10; i++) lg.circle('fill', cx + (rng.random() - 0.5) * 104, p.y - 30 - rng.random() * 40, 7);
+          // bark trunk body (drawn well below its top so its base never cuts off)
+          const bodyBot = p.y + Math.min(p.h, 1200);
+          lg.setColor(0.20, 0.15, 0.11, 1); lg.rectangle('fill', p.x, p.y, p.w, bodyBot - p.y);
+          lg.setColor(0.14, 0.10, 0.08, 1); lg.rectangle('fill', p.x + p.w * 0.58, p.y, p.w * 0.42, bodyBot - p.y);
+          lg.setColor(0.10, 0.07, 0.05, 0.8); lg.setLineWidth(2);
+          for (let i = 1; i < 5; i++) { const gx = p.x + i * p.w / 5; lg.line(gx, p.y + 6, gx + Math.sin(i) * 4, bodyBot); }
+          lg.setLineWidth(1);
+          lg.setColor(0.24, 0.36, 0.18, 1); lg.rectangle('fill', p.x, p.y, p.w, 4);
+          drawGrass(p.x, p.y, p.w, rng);
+          // bark-knot handholds down the climbable face
+          const cf = p.climbL ? p.x : p.x + p.w, sgn = p.climbL ? -1 : 1;
+          const yEnd = p.y + p.h - 20;
+          for (let y = p.y + HOLDSTEP; y < yEnd; y += HOLDSTEP) {
+            const ww = 8 + rng.random() * 6;
+            const x0 = sgn < 0 ? cf - ww : cf - 3;
+            lg.setColor(0.16, 0.11, 0.08, 1); lg.rectangle('fill', x0, y, ww + 3, 6);
+            lg.setColor(0.30, 0.24, 0.14, 0.8); lg.rectangle('fill', x0, y, ww + 3, 2);
+            lg.setColor(0, 0, 0, 0.4); lg.rectangle('fill', x0, y + 5, ww + 3, 2);
+          }
+        } else {
+          // mossy forest ground / stepping-stone
+          const bodyH = Math.min(p.h, 1400), N = 10;
+          for (let i = 0; i < N; i++) {
+            const k = i / N;
+            lg.setColor(lerp(0.17, 0.07, k), lerp(0.13, 0.06, k), lerp(0.09, 0.05, k), 1);
+            lg.rectangle('fill', p.x, p.y + i * (bodyH / N), p.w, bodyH / N + 1);
+          }
+          lg.setColor(0.12, 0.09, 0.06, 0.9); lg.setLineWidth(2);
+          const nR = Math.max(2, Math.floor(p.w / 200));
+          for (let ri = 0; ri < nR; ri++) {
+            let rx = p.x + 20 + rng.random() * (p.w - 40), ry = p.y + 8;
+            for (let s = 0; s < 3; s++) { const nx = rx + (rng.random() - 0.5) * 20, ny = ry + 18 + rng.random() * 22; lg.line(rx, ry, nx, ny); rx = nx; ry = ny; }
+          }
+          lg.setLineWidth(1);
+          for (let bi = 0; bi < Math.max(2, Math.floor(p.w / 240)); bi++) {
+            const r = 8 + rng.random() * 12;
+            const rx = p.x + 16 + r + rng.random() * Math.max(0, p.w - 32 - 2 * r);
+            const ry = p.y + 22 + r + rng.random() * 40;
+            lg.setColor(0.20, 0.19, 0.18, 1); lg.circle('fill', rx, ry, r);
+            lg.setColor(0.28, 0.38, 0.20, 0.7); lg.circle('fill', rx, ry - r * 0.5, r * 0.6);
+          }
+          lg.setColor(0.20, 0.30, 0.15, 1); lg.rectangle('fill', p.x, p.y, p.w, 5);
+          drawGrass(p.x, p.y, p.w, rng);
         }
       } else {
         // extend the pillar far below its collision body so its base is never
@@ -396,7 +469,7 @@
     }
     // closed portcullis gates (Level 2 / 3) block horizontally — they span floor
     // to ceiling, so a full-height solid is enough to bar the way
-    const gateSet = level === 2 ? l2.gates : (level === 3 ? l3.gates : (level === 5 ? l5.gates : null));
+    const gateSet = level === 2 ? l2.gates : (level === 3 ? l3.gates : (level === 5 ? l5.gates : (level === 6 ? l6.gates : null)));
     if (gateSet) {
       for (const g of gateSet) {
         if ((g.openT || 0) > 0.82) continue;   // raised enough to walk under
@@ -433,6 +506,16 @@
       if (p.vy >= 0 && p.x + 10 > L.x && p.x - 10 < L.x + L.w
         && prevBottom <= L.y + 16 && p.y >= L.y - 2) {
         p.y = L.y; p.vy = 0; p.onGround = true; p.onBeam = true;
+      }
+    }
+    // Level 6 drawbridges close in two halves — each closed half is a walkable deck
+    if (level === 6 && l6.bridges) {
+      for (const br of l6.bridges) {
+        const mid = (br.x0 + br.x1) / 2;
+        if (p.vy >= 0 && prevBottom <= br.y + 14 && p.y >= br.y - 2) {
+          if (br.leftT >= 0.98 && p.x + 10 > br.x0 && p.x - 10 < mid) { p.y = br.y; p.vy = 0; p.onGround = true; p.onBeam = true; }
+          else if (br.rightT >= 0.98 && p.x + 10 > mid && p.x - 10 < br.x1) { p.y = br.y; p.vy = 0; p.onGround = true; p.onBeam = true; }
+        }
       }
     }
   }
@@ -534,7 +617,7 @@
   }
   function saveProgress(n) {
     try {
-      if (n >= 2 && n <= 5) {
+      if (n >= 2 && n <= 6) {
         localStorage.setItem(SAVE_KEY, String(n));
         localStorage.setItem(DIFFICULTY_KEY, gameDifficulty);
       }
@@ -543,7 +626,7 @@
   function loadProgress() {
     try {
       const v = parseInt(localStorage.getItem(SAVE_KEY), 10);
-      return (Number.isFinite(v) && v >= 2 && v <= 5) ? v : 0;
+      return (Number.isFinite(v) && v >= 2 && v <= 6) ? v : 0;
     } catch (e) { return 0; }
   }
   function clearProgress() {
@@ -641,6 +724,7 @@
     if (n === 1) { plats = plats1; checkpoints = checkpoints1; }
     else if (n === 2) { plats = plats2; checkpoints = checkpoints2; }
     else if (n === 5) { plats = plats5; checkpoints = checkpoints5; }
+    else if (n === 6) { plats = plats6; checkpoints = checkpoints6; }
     else { plats = plats3; checkpoints = checkpoints3; }
     buildLevel();
     respawn = { x: checkpoints[0].x, y: checkpoints[0].y };
@@ -654,6 +738,7 @@
     if (n === 2) initEnts2();
     if (n === 3) initEnts3();
     if (n === 5) initEnts5();
+    if (n === 6) initEnts6();
     // snap the spawn onto the actual floor under the checkpoint and start
     // grounded, so the hero can never show a mid-air "falling" pose at the start
     const groundY = floorAt(checkpoints[0].x, checkpoints[0].y - 4);
@@ -674,7 +759,7 @@
     // the hero carries the sword learned in the keep into the black halls.
     // Level 2 normally teaches the sword via its pickup puzzle, so only hand it
     // over there when a debug jump drops us straight into it.
-    if (n === 3 || n === 5 || (DEBUG && n === 2)) { player.hasSword = true; player.drawT = 0; }
+    if (n === 3 || n === 5 || n === 6 || (DEBUG && n === 2)) { player.hasSword = true; player.drawT = 0; }
     player.spawnFloor = player.y; player.initGrace = 0.5; player.startGuard = 3.5;
     // hard spawn-floor lock for the black halls: for the first seconds the hero
     // physically cannot drop below the start floor (a bullet-proof net for any
@@ -689,6 +774,13 @@
     // location card — suppress the generic platformer intro overlays. The King
     // wakes with his sword sheathed on his back (drawn with ATTACK).
     if (n === 5) { introT = 999; player.started = true; player.sheathed = true; player.swordIdle = 5; }
+    // Level 6 opens with the King flying in on the freed carpet (its own arrival
+    // cutscene). He keeps the Fire-Sword learned in the caverns.
+    if (n === 6) {
+      introT = 999; player.started = true;
+      player.lavaSword = true; player.lavaCharge = 3;
+      startArrival6();
+    }
   }
   love.initLevel = initLevel;
 
@@ -752,6 +844,7 @@
   const LEVEL_NAMES = {
     2: "THE  WITCH'S  KEEP", 3: 'THE  BLACK  HALLS',
     4: 'SOME  TIME  BEFORE', 5: 'THE  LAVA  CAVERNS',
+    6: 'THE  ENCHANTED  WOOD',
   };
   // Rects for the two menu options, filled in during drawTitleMenu so a mouse
   // click (love.mousepressed) can hit-test them.
@@ -1010,6 +1103,8 @@
       else drawL5Overlay();
     }
 
+    if (level === 6) drawL6Overlay();
+
     if (cine.boxA > 0) {
       const h = 58 * smooth(cine.boxA);
       lg.setColor(0.02, 0.015, 0.04, 0.96);
@@ -1114,7 +1209,7 @@
       if (m) {
         DEBUG = true;
         const n = Number(decodeURIComponent(m[1]));
-        if (Number.isFinite(n) && n >= 1 && n <= 5) startLevel = Math.floor(n);
+        if (Number.isFinite(n) && n >= 1 && n <= 6) startLevel = Math.floor(n);
       }
       // ?immortal=true — the hero cannot be hurt or die (debug aid; combine like
       // ?debug=5&immortal=true)
@@ -1311,6 +1406,18 @@
     if (level === 2 && l2.gameOver) return;
     if (level === 3 && l3.gameOver) return;
     if (level === 5 && l5.gameOver) { updateParticles(dt); return; }
+    if (level === 6 && l6.gameOver) { updateParticles(dt); return; }
+
+    // Level 6 scripted beats: the carpet arrival + witch, and the hut ending.
+    // The hero is carried / frozen; the platformer physics are bypassed.
+    if (level === 6 && ((l6.arrival && l6.arrival.active) || l6.end.stage > 0)) {
+      if (l6.arrival && l6.arrival.active) updateArrival6(dt); else updateEnd6(dt);
+      updateScarf(dt); updateParticles(dt);
+      windVol = lerp(windVol, 0, Math.min(1, dt * 2.5)); if (windSrc) windSrc.setVolume(windVol);
+      if (battleSrc) { battleVol = lerp(battleVol, 0, Math.min(1, dt * 2.0)); battleSrc.setVolume(battleVol); }
+      if (musicSrc) { musicVol = lerp(musicVol, 0.36, Math.min(1, dt * 0.6)); musicSrc.setVolume(musicVol); }
+      return;
+    }
 
     // Level 5 scripted beats: the wake-up cutscene and the carpet flight bypass
     // the platformer physics (the hero is frozen / carried)
@@ -1326,6 +1433,7 @@
       return;
     }
 
+    if (level === 6) updateMovingPlats6();   // drift the floating limbs before physics
     updatePlayer(dt, player);
     updateScarf(dt);
     updateParticles(dt);
@@ -1334,6 +1442,7 @@
     if (level === 2) updateEnts2(dt);
     if (level === 3) updateEnts3(dt);
     if (level === 5) updateEnts5(dt);
+    if (level === 6) updateEnts6(dt);
 
     if (level === 1) {
       let target = 0.28 * (0.55 + 0.45 * gust());   // gentler wind
@@ -1386,7 +1495,7 @@
     lg.push();
     lg.scale(1 / PIX);
 
-    if (level === 1) drawBackground(cam); else if (level === 4) drawBalconyBack(); else if (level === 5) drawBackground5(cam); else drawBackground2(cam);
+    if (level === 1) drawBackground(cam); else if (level === 4) drawBalconyBack(); else if (level === 5) drawBackground5(cam); else if (level === 6) drawBackground6(cam); else drawBackground2(cam);
 
     lg.push();
     lg.translate(VW / 2, VH / 2);
@@ -1405,11 +1514,13 @@
       if (l4.phase !== 8) { drawScarf(); drawHero(player); }
     } else {
       if (level === 1) drawCastle(CASTLE_X, PROM_Y);
+      if (level === 6) { drawStream6(); drawGiantTree6(); }   // rivers/cascades + the giant tree sit BEHIND the branches
       drawPlats();
       if (level === 1) drawFlyingCarpet(-120, 1420, 1.7);   // magic carpet hovering over the high left cliff
       if (level === 2) drawEnts2();
       if (level === 3) drawEnts3();
       if (level === 5) drawEnts5();
+      if (level === 6) drawEnts6();
     }
     drawDusts();
     // during the stair-climb finale the real hero is replaced by the backlit
@@ -1417,7 +1528,7 @@
     // Falling into lava: the body vanishes on the spot (only the fiery splash
     // "schizzo" remains) instead of visibly sinking down through the molten pool.
     const heroInLava = (player.dying && player.lavaSink != null);
-    if (level !== 4 && !(level === 2 && l2.endStage > 0) && !heroInLava) {
+    if (level !== 4 && !(level === 2 && l2.endStage > 0) && !heroInLava && !(level === 6 && l6.end.stage >= 1)) {
       // Level 5: the carpet flight seats the hero atop the flying carpet. (The
       // wake-up "getting up" is handled inside drawHero via wakePose/o.rot.)
       if (level === 5 && l5.carpet && l5.carpet.state === 'riding') {
@@ -1495,8 +1606,15 @@
       return;
     }
     // debug (?debug=…): number keys jump straight to a level
-    if (DEBUG && (key === '1' || key === '2' || key === '3' || key === '4' || key === '5')) { initLevel(Number(key)); return; }
+    if (DEBUG && (key === '1' || key === '2' || key === '3' || key === '4' || key === '5' || key === '6')) { initLevel(Number(key)); return; }
     if (key === 'r') { initLevel(level); return; }
+    // Level 6 arrival: Enter / Space skips through the Witch's dialogue lines
+    if (level === 6 && l6.arrival && l6.arrival.active) {
+      if (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x') {
+        if (l6.dialog) l6.dialog.t = l6.dialog.dur + 1;   // expire → advanceDialog6 pops the next line
+        return;
+      }
+    }
     // Level 4 cutscene: advance the dialogue / skip beats
     if (level === 4) { if (key === 'space' || key === 'return' || key === 'x' || key === 'z' || key === 'k') l4.skip = true; return; }
     if (level === 1 && cine.on && cine.stage === 4 && cine.hintA >= 0.95) {
@@ -1543,8 +1661,9 @@
       }
       return;
     }
-    const l5busy = (level === 5 && (l5.wake.active || (l5.flight && l5.flight.active)));
-    const swordLevel = (level === 2 || level === 3 || level === 5);
+    const l5busy = (level === 5 && (l5.wake.active || (l5.flight && l5.flight.active)))
+      || (level === 6 && ((l6.arrival && l6.arrival.active) || l6.end.stage > 0));
+    const swordLevel = (level === 2 || level === 3 || level === 5 || level === 6);
     // if the blade is sheathed on the back, an ATTACK (or block) first DRAWS it
     // back into the usual position instead of striking
     if ((key === 'x' || key === 'f' || key === 'c') && swordLevel && player.hasSword && player.sheathed && !l5busy
@@ -1553,7 +1672,7 @@
       if (sfxSwing) sfxSwing.play(0.3, 1.25);
       return;
     }
-    const hasFire = (level === 5 && player.lavaSword);
+    const hasFire = ((level === 5 || level === 6) && player.lavaSword);
     const riposteReady = (player && (player.riposte || 0) > 0 && (player.riposteHits || 0) > 0);
     if ((key === 'x' || key === 'f') && swordLevel && player.hasSword && !l5busy && !(hasFire && fireCharging(player))
       && (player.state === 'ground' || player.state === 'air')
@@ -1621,7 +1740,8 @@
         || (level === 2 && (l2.endStage || 0) > 0)
         || (level === 3 && (l3.end.stage || 0) > 0)
         || (level === 5 && (l5.wake.active || l5.end.stage > 0
-            || (l5.flight && l5.flight.active && l5.flight.phase !== 'run')));
+            || (l5.flight && l5.flight.active && l5.flight.phase !== 'run')))
+        || (level === 6 && ((l6.arrival && l6.arrival.active) || l6.end.stage > 0));
     },
   };
 
@@ -1632,6 +1752,7 @@
     l3: function () { return l3; },
     l4: function () { return l4; },
     l5: function () { return l5; },
+    l6: function () { return l6; },
     difficulty: function () { return gameDifficulty; },
     setDifficulty: function (value) { return saveDifficulty(value); },
     giveSword: function () { player.hasSword = true; player.drawT = 0; },

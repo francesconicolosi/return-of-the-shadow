@@ -155,7 +155,8 @@ function spawnLavaSplash(x, y, n) {
 // one lava bullet loosed straight ahead as the charged fire-blade swings
 function fireLavaBullet(p) {
   const hx = p.x + p.facing * 18, hy = p.y - 32;
-  l5.bullets.push({ x: hx, y: hy, vx: p.facing * 660, vy: -24, t: 0, r: 6 });
+  const arr = (level === 6) ? l6.bullets : l5.bullets;   // the Fire-Sword is carried into the wood
+  arr.push({ x: hx, y: hy, vx: p.facing * 660, vy: -24, t: 0, r: 6 });
   if (sfxSwing) sfxSwing.play(0.5, 0.6);
 }
 

@@ -136,3 +136,86 @@ const LAVA5 = [
   { x0: 3660, x1: 3820, y: 452, emit: true },
   { x0: 4800, x1: 25200, y: 452, river: true },   // the long river (no pit-balls; the flight has its own bolts)
 ];
+
+// -------------------------------------------------------------- LEVEL 6: THE ENCHANTED WOOD
+// The King steps out of the realm of light into a deep, magic forest and arrives
+// on the freed carpet; the Witch taunts him one last time. The wood is built in
+// TWO LAYERS: mossy ground clearings (combat + pressure-stone puzzles) linked by
+// tall climb-trees to an UPPER CANOPY of branch-walkways that cross a waterfall
+// ravine and a deep gorge. Antlered Forest Sentinels (sword + teal staff-bolts,
+// four blows each) hold both layers. At the very end a hill rises; a branch path
+// climbs it to a small firelit hut ("capanna") on the summit — he steps inside.
+//
+// Vertical connectors are climb-LEFT tree walls (the hero climbs the near face
+// and mantles onto the canopy). Canopy/hill limbs are BEAMS (one-way), so the
+// hero can hop up through them; beam-to-beam gaps are kept short (~60px) because
+// footing on a beam is slower than a run.
+const FLOOR6 = 384;
+const CANOPY6 = 195, CANOPY6B = 180, CANOPY6C = 165;   // the three upper branch-walkway layers
+const CAPANNA_X = 13400, CAPANNA_Y = 120;              // the (big) hut, on the hill summit
+// A long two-layer wood. Ground clearings (combat + puzzles) are linked by
+// climb-LEFT tree walls up to UPPER CANOPY corridors of FLOATING, drifting branch
+// limbs that cross glowing soul-rivers, and two BURN-THE-LIANA drawbridges. At the
+// end a GIANT TREE climbs high to the door key, caged behind lianas; then a
+// staircase reaches the hut.
+let plats6 = [
+  // ground clearings + climb-trunks
+  { x: -500, y: 384, w: 1500, h: 1400 },                 // S0 GLADE  -500..1000 (arrival)
+  { x: 1000, y: 384, w: 1500, h: 1400 },                 // S1  1000..2500 (sentinels; gate A ≈1930)
+  { x: 1300, y: 230, w: 110, h: 1554, climbL: true },    // T1 (button B1 on top → gate A)
+  { x: 2500, y: CANOPY6, w: 120, h: 1589, climbL: true },// T2 → CANOPY #1
+  { x: 4270, y: 384, w: 630, h: 1400 },                  // S2a 4270..4900 (button B2)
+  // BRIDGE 1 river gap 4900..5340 (burn the three lianas to drop the deck)
+  { x: 5340, y: 384, w: 590, h: 1400 },                  // S2b 5340..5930 (button B3; gate B ≈5880)
+  { x: 5930, y: CANOPY6B, w: 120, h: 1604, climbL: true },// T3 → CANOPY #2
+  { x: 7700, y: 384, w: 610, h: 1400 },                  // S3a 7700..8310 (button B5)
+  // BRIDGE 2 river gap 8310..8750
+  { x: 8750, y: 384, w: 590, h: 1400 },                  // S3b 8750..9340 (button B6; gate D ≈9300)
+  { x: 9340, y: CANOPY6C, w: 120, h: 1619, climbL: true },// T4 → CANOPY #3
+  { x: 10830, y: 384, w: 1570, h: 1400 },                // FOOT + GIANT TREE  10830..12400
+  // staircase to the summit + the hut
+  { x: 12400, y: 320, w: 160, h: 1200 },
+  { x: 12560, y: 256, w: 160, h: 1200 },
+  { x: 12720, y: 192, w: 160, h: 1200 },
+  { x: 12880, y: CAPANNA_Y, w: 900, h: 1200 },           // SUMMIT 12880..13780 (gate C ≈13100, capanna ≈13400)
+];
+(function () {
+  // FLOATING canopy corridors: the limbs drift (bx/by = base, mv = motion), so
+  // the crossings are moving-platform gauntlets over the soul-rivers.
+  function corridor(x0, y, n) {
+    for (let i = 0; i < n; i++) {
+      const px = x0 + i * 280;
+      plats6.push({ x: px, y: y, w: 190, h: 20, bx: px, by: y, mv: { ax: 28, ay: 32, sp: 0.85 + (i % 3) * 0.22, ph: i * 1.5 } });
+    }
+  }
+  corridor(2680, CANOPY6, 6);    // CANOPY #1  2680..4270  (over ravine 1)
+  corridor(6110, CANOPY6B, 6);   // CANOPY #2  6110..7700  (over ravine 2)
+  corridor(9520, CANOPY6C, 5);   // CANOPY #3  9520..10830 (over ravine 3)
+  // the GIANT TREE: tall drifting branch-beams climbing high; the key sits on the
+  // top branch, caged behind lianas that must be burnt with fire.
+  function tb(xs, y) { for (const x of xs) plats6.push({ x: x, y: y, w: 130, h: 16, beam: true, bx: x, by: y, mv: { ax: 12, ay: 14, sp: 1.0, ph: x * 0.006 } }); }
+  tb([11150, 11350, 11550, 11750], 300);
+  tb([11250, 11450, 11650], 232);
+  tb([11150, 11350, 11550], 164);
+  tb([11250, 11450], 96);
+  tb([11150, 11350, 11550], 28);
+  tb([11250, 11450], -40);
+  tb([11150, 11350, 11550], -108);
+  tb([11250, 11450], -176);
+  tb([11150, 11350, 11550], -244);
+  plats6.push({ x: 11290, y: -312, w: 170, h: 16, beam: true, bx: 11290, by: -312, mv: { ax: 10, ay: 12, sp: 1.0, ph: 3.1 } });  // KEY branch (top)
+})();
+let checkpoints6 = [
+  { x: 260,  y: FLOOR6 }, { x: 1120, y: FLOOR6 }, { x: 2450, y: FLOOR6 },
+  { x: 4320, y: FLOOR6 }, { x: 5360, y: FLOOR6 }, { x: 7720, y: FLOOR6 },
+  { x: 8770, y: FLOOR6 }, { x: 10850, y: FLOOR6 }, { x: 12930, y: CAPANNA_Y },
+];
+// glowing soul-rivers: three under the canopy corridors + two under the bridges
+const STREAM6 = { y: 470, gaps: [[2620, 4270], [6050, 7700], [9460, 10830], [4900, 5340], [8310, 8750]] };
+// MUCH larger straight cascades feeding the rivers: { x, w } (drawn in world space)
+const FALLS6 = [
+  { x: 3100, w: 180 }, { x: 3800, w: 170 },
+  { x: 6700, w: 180 }, { x: 7300, w: 170 },
+  { x: 9950, w: 170 }, { x: 10450, w: 160 },
+  { x: 5120, w: 160 }, { x: 8530, w: 160 },
+];

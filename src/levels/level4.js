@@ -191,11 +191,16 @@ function wrapText(text, font, maxW) {
   if (cur) out.push(cur);
   return out;
 }
-const L4_NAMES = { HERO: 'The King', GUARD: 'Royal Guard', SERVANT: 'Handmaiden', SHAHRAMAN: 'Shahraman' };
-const L4_COLS = { HERO: [1.0, 0.86, 0.5], GUARD: [0.93, 0.44, 0.34], SERVANT: [0.96, 0.62, 0.72], SHAHRAMAN: [0.6, 0.86, 1.0] };
+const L4_NAMES = { HERO: 'The King', GUARD: 'Royal Guard', SERVANT: 'Handmaiden', SHAHRAMAN: 'Shahraman', WITCH: 'The Witch' };
+const L4_COLS = { HERO: [1.0, 0.86, 0.5], GUARD: [0.93, 0.44, 0.34], SERVANT: [0.96, 0.62, 0.72], SHAHRAMAN: [0.6, 0.86, 1.0], WITCH: [0.55, 0.9, 0.82] };
 function speakerHead(who) {
-  // Level 5 draws overlays in screen space over a scrolling camera, so convert
-  // the hero's world position to screen coordinates for the speaker marker.
+  // Levels 5 & 6 draw overlays in screen space over a scrolling camera, so
+  // convert world positions to screen coordinates for the speaker marker.
+  if (level === 6) {
+    if (who === 'HERO') return { x: VW / 2 + (player.x - cam.x) * cam.zoom, y: VH / 2 + (player.y - 70 - cam.y) * cam.zoom };
+    if (who === 'WITCH' && l6.witch) return { x: VW / 2 + (l6.witch.x - cam.x) * cam.zoom, y: VH / 2 + (l6.witch.y - 74 - cam.y) * cam.zoom };
+    return null;
+  }
   if (who === 'HERO' && level === 5) {
     return { x: VW / 2 + (player.x - cam.x) * cam.zoom,
              y: VH / 2 + (player.y - 70 - cam.y) * cam.zoom };

@@ -94,7 +94,7 @@ function initEnts5() {
   l5.dialog = { text: '', t: 0, dur: 0 }; l5.dialogDelay = null;
   l5.end = { stage: 0, t: 0 }; l5.flight = null; l5.carpetNear = false;
   l5.riverHinted = false; l5.doorHinted = false; l5.carpetHinted = false;
-  l5._hitThisSwing = false;
+  l5._hitThisSwing = false; l5._advanced = false;
 }
 
 // ---- the slow wake-up cutscene (black bands, hero gets up off the cave floor)
@@ -613,18 +613,13 @@ function drawL5Overlay() {
   // finale — the King has passed into the door of light; hold on WHITE with a
   // black label
   if (l5.end.stage >= 5) {
+    // pass through the door of light — hold on white, then Level 6 begins
     lg.setColor(1, 1, 1, 1); lg.rectangle('fill', 0, 0, VW, VH);   // full white
-    const a = clamp((l5.end.t - 0.6) / 1.2, 0, 1);
+    const a = clamp((l5.end.t - 0.6) / 1.2, 0, 1) * clamp((2.2 - l5.end.t) / 0.6, 0, 1);
     if (a > 0 && FONT_SUB) {
       lg.setFont(FONT_SUB);
       lg.setColor(0.08, 0.07, 0.10, a);
-      printSpaced('THE  KING  PASSES  INTO  THE  REALM  OF  LIGHT', VW / 2, VH / 2 - 22, FONT_SUB, 4, 0.82);
-      lg.setColor(0.16, 0.14, 0.18, a);
-      printSpaced('TO  BE  CONTINUED', VW / 2, VH / 2 + 18, FONT_SUB, 6, 1);
-      lg.setFont(FONT_HUD);
-      lg.setColor(0.3, 0.28, 0.32, a * 0.8);
-      const m = 'press  R  to  replay';
-      lg.print(m, VW / 2 - FONT_HUD.getWidth(m) / 2, VH / 2 + 54);
+      printSpaced('THE  KING  PASSES  INTO  THE  REALM  OF  LIGHT', VW / 2, VH / 2 - 4, FONT_SUB, 4, 0.82);
     }
   } else if (l5.end.stage > 0) {
     const a = clamp(l5.end.t / 2.0, 0, 1);
@@ -716,14 +711,14 @@ function startFlightFall(p) {
 // ground too, wherever the Fire-Sword is used)
 const CHARGE_TIME = 1.0;
 function updateFireCharge(p, dt) {
-  if (!(level === 5 && p.lavaSword)) return;
+  if (!((level === 5 || level === 6) && p.lavaSword)) return;
   const blocking = love.keyboard.isDown('c');
   if (blocking && (p.lavaCharge || 0) < 3) {
     p.blockHold = (p.blockHold || 0) + dt;
     p.blockT = Math.max(p.blockT || 0, 0.15);   // hold the block pose while charging
     if (p.blockHold >= CHARGE_TIME) {
       p.lavaCharge = 3; p.blockHold = 0; p.blockFlash = 0.28;
-      l5toast('The Fire-Sword blazes — 3 lava bullets ready');
+      (level === 6 ? l6toast : l5toast)('The Fire-Sword blazes — 3 lava bullets ready');
     }
   } else {
     p.blockHold = 0;
@@ -851,9 +846,12 @@ function updateFlight5(dt) {
     if (f.t > 2.4) { f.phase = 'done'; f.t = 0; if (l5.end.stage < 5) { l5.end.stage = 5; l5.end.t = 0; } }
     return;
   }
-  // done
+  // done — hold on white a beat, then pass through the light into the wood (L6)
   f.whiteA = 1;
-  if (l5.end.stage >= 5) l5.end.t += dt;
+  if (l5.end.stage >= 5) {
+    l5.end.t += dt;
+    if (l5.end.t > 2.2 && !l5._advanced) { l5._advanced = true; initLevel(6); }
+  }
 }
 
 // Per-frame update while the King is falling off the carpet to his death.

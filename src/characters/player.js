@@ -524,38 +524,44 @@ function drawHeldSword(hx, hy, forearmA) {
 }
 
 // Flames wreathing the charged Fire-Sword blade. `a` is the blade direction
-// (body-local sin/cos convention). Drawn in the hero's local space.
+// (body-local sin/cos convention). The flame follows the SAME curved centreline
+// as drawSwordAt() so it hugs the scimitar's curve exactly (not a straight bar).
 function drawBladeFire(hx, hy, a) {
   const bx = Math.sin(a), by = Math.cos(a);                          // along the blade
-  const px = Math.sin(a + Math.PI / 2), py = Math.cos(a + Math.PI / 2); // perpendicular
-  const bx0 = hx + bx * 6, by0 = hy + by * 6;   // start a little out from the hand
-  // slim heat glow hugging the blade (not a big blob near the body)
-  for (let i = 1; i <= 6; i++) {
-    const d = 6 + i * 4.2;
-    lg.setColor(1.0, 0.42, 0.10, 0.09);
-    lg.circle('fill', hx + bx * d, hy + by * d, 4.6);
+  const px = Math.sin(a + Math.PI / 2), py = Math.cos(a + Math.PI / 2); // perpendicular (curve side)
+  // rebuild the curved blade centreline exactly like drawSwordAt (L=30, CURVE=9)
+  const L = 30, CURVE = 9, N = 12;
+  const baseX = hx + bx * 3, baseY = hy + by * 3;
+  const mid = [];
+  for (let i = 0; i <= N; i++) {
+    const s = i / N, cur = CURVE * s * s;
+    mid.push([baseX + bx * (L * s) + px * cur, baseY + by * (L * s) + py * cur, s]);
   }
-  // flickering flame tongues licking off the edge, growing toward the tip
-  const n = 6;
-  for (let i = 0; i < n; i++) {
-    const d = 4 + i * (28 / n);
-    const flick = Math.sin(T * 16 + i * 1.7) * 0.5 + 0.5;
+  // slim heat glow hugging the curved blade
+  for (let i = 1; i < mid.length; i++) {
+    lg.setColor(1.0, 0.42, 0.10, 0.10);
+    lg.circle('fill', mid[i][0], mid[i][1], 4.4 - mid[i][2] * 1.4);
+  }
+  // flickering flame tongues licking off the curved edge, alternating sides
+  for (let i = 1; i < mid.length - 1; i++) {
+    const cx = mid[i][0], cy = mid[i][1], s = mid[i][2];
+    // local tangent along the curve, and its perpendicular
+    let tx = mid[i + 1][0] - mid[i - 1][0], ty = mid[i + 1][1] - mid[i - 1][1];
+    const d = Math.hypot(tx, ty) || 1; tx /= d; ty /= d;
+    const nx = -ty, ny = tx;
+    const flick = Math.sin(T * 16 + i * 1.5) * 0.5 + 0.5;
     const side = (i % 2 === 0) ? 1 : -1;
-    const bxp = bx0 + bx * d, byp = by0 + by * d;                    // point along blade
-    const len = 5 + flick * 7;
-    const tipx = bxp + (bx * 0.7 + px * side * 0.7) * len;
-    const tipy = byp + (by * 0.7 + py * side * 0.7) * len;
+    const len = 4 + flick * 6 + s * 4;
+    const tipx = cx + (tx * 0.5 + nx * side) * len, tipy = cy + (ty * 0.5 + ny * side) * len;
     lg.setColor(1.0, 0.38, 0.07, 0.5);
-    lg.polygon('fill', bxp - px * side * 1.8, byp - py * side * 1.8,
-      bxp + px * side * 1.8, byp + py * side * 1.8, tipx, tipy);
+    lg.polygon('fill', cx - nx * side * 1.7, cy - ny * side * 1.7, cx + nx * side * 1.7, cy + ny * side * 1.7, tipx, tipy);
     lg.setColor(1.0, 0.85, 0.4, 0.75);
-    lg.polygon('fill', bxp - px * side * 0.9, byp - py * side * 0.9,
-      bxp + px * side * 0.9, byp + py * side * 0.9,
-      bxp + (bx * 0.7 + px * side * 0.7) * len * 0.55, byp + (by * 0.7 + py * side * 0.7) * len * 0.55);
+    lg.polygon('fill', cx - nx * side * 0.9, cy - ny * side * 0.9, cx + nx * side * 0.9, cy + ny * side * 0.9,
+      cx + (tx * 0.5 + nx * side) * len * 0.55, cy + (ty * 0.5 + ny * side) * len * 0.55);
   }
-  // bright white-hot core running down the blade
-  lg.setColor(1.0, 0.78, 0.35, 0.85); lg.setLineWidth(2);
-  lg.line(bx0, by0, hx + bx * 30, hy + by * 30);
+  // bright white-hot core running down the curved blade
+  lg.setColor(1.0, 0.78, 0.35, 0.9); lg.setLineWidth(2.4);
+  for (let i = 0; i < mid.length - 1; i++) lg.line(mid[i][0], mid[i][1], mid[i + 1][0], mid[i + 1][1]);
   lg.setLineWidth(1);
 }
 
@@ -778,7 +784,7 @@ function drawHero(p) {
     }
     drawHeldSword(hf[0], hf[1], o.armF[1]);
     // Fire-Sword charged: the blade blazes with flame
-    if (level === 5 && p.lavaSword && (p.lavaCharge || 0) > 0) {
+    if ((level === 5 || level === 6) && p.lavaSword && (p.lavaCharge || 0) > 0) {
       drawBladeFire(hf[0], hf[1], o.armF[1] + 0.35);
     }
     if ((p.blockT || 0) > 0 && (p.blockFlash || 0) <= 0) {
@@ -929,6 +935,10 @@ function updatePlayer(dt, p) {
       if (level === 5 && !l5.gameOver) {
         l5.lives = (l5.lives || 0) - 1;
         if (l5.lives <= 0) { l5.gameOver = true; p.deadFade = 1; return; }
+      }
+      if (level === 6 && !l6.gameOver) {
+        l6.lives = (l6.lives || 0) - 1;
+        if (l6.lives <= 0) { l6.gameOver = true; p.deadFade = 1; return; }
       }
       respawnPlayer(p); p.dying = false; p.deadFade = 0.999;
     }
