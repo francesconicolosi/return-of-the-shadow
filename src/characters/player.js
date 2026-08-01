@@ -786,8 +786,8 @@ function drawHero(p) {
       lg.circle('fill', hf[0], hf[1], 5);
     }
     drawHeldSword(hf[0], hf[1], o.armF[1]);
-    // Fire-Sword charged: the blade blazes with flame
-    if ((level === 5 || level === 6) && p.lavaSword && (p.lavaCharge || 0) > 0) {
+    // Fire-Sword charged: the blade blazes with flame (any biome in Nightmares)
+    if (((level === 5 || level === 6) || PROC.active) && p.lavaSword && (p.lavaCharge || 0) > 0) {
       drawBladeFire(hf[0], hf[1], o.armF[1] + 0.35);
     }
     if ((p.blockT || 0) > 0 && (p.blockFlash || 0) <= 0) {
@@ -926,6 +926,12 @@ function updatePlayer(dt, p) {
     }
     p.deadFade = p.deadFade + dt * (p.lavaSink != null ? 1.9 : 1.6);
     if (p.deadFade >= 1) {
+      // procedural mode owns its own lives/game-over (spans several level nums)
+      if (PROC.active) {
+        PROC.lives = (PROC.lives || 0) - 1;
+        if (PROC.lives <= 0) { PROC.gameOver = true; p.deadFade = 1; return; }
+        respawnPlayer(p); p.dying = false; p.deadFade = 0.999;
+      } else {
       // in the keep, dying costs a life; run out of lives → game over
       if (level === 2 && !l2.gameOver) {
         l2.lives = (l2.lives || 0) - 1;
@@ -944,6 +950,7 @@ function updatePlayer(dt, p) {
         if (l6.lives <= 0) { l6.gameOver = true; p.deadFade = 1; return; }
       }
       respawnPlayer(p); p.dying = false; p.deadFade = 0.999;
+      }
     }
     if (!p.dying) return;
   }

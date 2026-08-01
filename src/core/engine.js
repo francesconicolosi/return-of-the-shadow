@@ -635,7 +635,43 @@
   }
   // titleMenu.active freezes the world behind a black title screen with the
   // witch's symbol and a Continue / New Game choice.
-  const titleMenu = { active: false, sel: 0, savedLevel: 0, savedDifficulty: 'normal', t: 0 };
+  const titleMenu = { active: false, sel: 0, savedLevel: 0, savedDifficulty: 'normal', t: 0, kinds: ['continue', 'new'] };
+
+  // The title menu offers a variable set of options: the story Continue / New
+  // Game (only when a story save exists) and always the procedural mode (plus a
+  // Continue Procedural when a run is saved). Rebuilt whenever the menu opens.
+  function rebuildTitleMenu() {
+    // Continue whichever save(s) exist, always offer fresh Nightmares runs
+    // (Easy / Normal) and a fresh story New Game.
+    const kinds = [];
+    if (titleMenu.savedLevel >= 2) kinds.push('continue');
+    if (hasProcSave()) kinds.push('nm-continue');
+    kinds.push('nm-new-easy');
+    kinds.push('nm-new-normal');
+    kinds.push('new');
+    titleMenu.kinds = kinds;
+    if (titleMenu.sel >= kinds.length) titleMenu.sel = 0;
+  }
+  function titleMenuLabel(kind) {
+    if (kind === 'continue') return 'CONTINUE  ·  LEVEL ' + titleMenu.savedLevel + '  ·  ' + titleMenu.savedDifficulty.toUpperCase();
+    if (kind === 'new') return 'NEW  GAME';
+    if (kind === 'nm-new-easy') return 'NEW  NIGHTMARES  MODE  ·  EASY';
+    if (kind === 'nm-new-normal') return 'NEW  NIGHTMARES  MODE  ·  NORMAL';
+    if (kind === 'nm-continue') {
+      const s = loadProc();
+      const where = (s && s.index >= PROC_STAGES) ? 'FINAL  BOSS' : ('DEPTH ' + ((s ? s.index : 0) + 1) + ' / ' + PROC_STAGES);
+      return 'CONTINUE  NIGHTMARES  ·  ' + where + '  ·  ' + (s ? String(s.difficulty).toUpperCase() : '');
+    }
+    return '';
+  }
+  function titleMenuConfirm() {
+    const kind = titleMenu.kinds[titleMenu.sel];
+    if (kind === 'continue') startFromMenu(true);
+    else if (kind === 'nm-continue') continueProceduralRun();
+    else if (kind === 'nm-new-easy') startProceduralRun('easy');
+    else if (kind === 'nm-new-normal') startProceduralRun('normal');
+    else if (kind === 'new') startFromMenu(false);
+  }
 
   function startCine(p) {
     cine.on = true; cine.stage = 1; cine.t = 0;
@@ -729,7 +765,8 @@
     buildLevel();
     respawn = { x: checkpoints[0].x, y: checkpoints[0].y };
     cine.on = false; cine.stage = 0; cine.t = 0;
-    cine.titleA = 0; cine.subA = 0; cine.boxA = 0; cine.hintA = 0; cine.difficultySel = 0;
+    cine.titleA = 0; cine.subA = 0; cine.boxA = 0; cine.hintA = 0;
+    cine.difficultySel = 0; cine.modeSel = 0; cine.cardStage = 0;
     musicVol = 0;
     if (musicSrc) {
       musicSrc.stop(); musicSrc.setVolume(0);
@@ -823,21 +860,38 @@
     if (cine.hintA > 0) {
       const a = smooth(cine.hintA);
       lg.setFont(FONT_HUD);
-      lg.setColor(0.9, 0.85, 0.8, a * (0.55 + 0.25 * Math.sin(T * 2)));
-      const msg = 'Press R to relive the ascent';
-      lg.print(msg, VW / 2 - FONT_HUD.getWidth(msg) / 2, VH - 102);
+      if ((cine.cardStage || 0) === 0) {
+        lg.setColor(0.9, 0.85, 0.8, a * (0.55 + 0.25 * Math.sin(T * 2)));
+        const msg = 'Press R to relive the ascent';
+        lg.print(msg, VW / 2 - FONT_HUD.getWidth(msg) / 2, VH - 102);
+      }
 
-      const diffY = VH - 76;
-      const normalOn = cine.difficultySel === 0, easyOn = cine.difficultySel === 1;
-      const normal = 'NORMAL';
-      const easy = 'EASY';
-      lg.setColor(0.9, 0.85, 0.8, a * (normalOn ? 1.0 : 0.45));
-      lg.print((normalOn ? '› ' : '  ') + normal, VW / 2 - 115, diffY);
-      lg.setColor(0.9, 0.85, 0.8, a * (easyOn ? 1.0 : 0.45));
-      lg.print((easyOn ? '› ' : '  ') + easy + '  ·  5 HP / 5 LIVES', VW / 2 + 16, diffY);
-      const msg2 = '← → choose difficulty      ENTER enter the castle';
-      lg.setColor(0.9, 0.85, 0.8, a);
-      lg.print(msg2, VW / 2 - FONT_HUD.getWidth(msg2) / 2, VH - 50);
+      const diffY = VH - 84;
+      if ((cine.cardStage || 0) === 0) {
+        // step 1 — choose the MODE: the story adventure, or Nightmares (procedural)
+        const m = cine.modeSel || 0;
+        lg.setColor(0.9, 0.85, 0.8, a * (m === 0 ? 1.0 : 0.5));
+        lg.print((m === 0 ? '› ' : '  ') + 'START  THE  ADVENTURE', VW / 2 - 230, diffY);
+        lg.setColor(0.60, 0.82, 0.78, a * (m === 1 ? 1.0 : 0.5));
+        lg.print((m === 1 ? '› ' : '  ') + 'NIGHTMARES  MODE  ·  BETA', VW / 2 + 20, diffY);
+        const msg2 = '← → choose mode      ENTER continue';
+        lg.setColor(0.9, 0.85, 0.8, a);
+        lg.print(msg2, VW / 2 - FONT_HUD.getWidth(msg2) / 2, VH - 44);
+      } else {
+        // step 2 — choose the DIFFICULTY for the chosen mode
+        const nightmares = cine.modeSel === 1;
+        lg.setColor(nightmares ? 0.60 : 0.9, nightmares ? 0.82 : 0.85, nightmares ? 0.78 : 0.8, a * 0.8);
+        const modeName = nightmares ? 'NIGHTMARES  MODE' : 'THE  ADVENTURE';
+        lg.print(modeName, VW / 2 - FONT_HUD.getWidth(modeName) / 2, diffY - 26);
+        const sel = cine.difficultySel || 0;
+        lg.setColor(0.9, 0.85, 0.8, a * (sel === 0 ? 1.0 : 0.45));
+        lg.print((sel === 0 ? '› ' : '  ') + 'NORMAL  ·  3 HP / 3 LIVES', VW / 2 - 210, diffY);
+        lg.setColor(0.9, 0.85, 0.8, a * (sel === 1 ? 1.0 : 0.45));
+        lg.print((sel === 1 ? '› ' : '  ') + 'EASY  ·  5 HP / 5 LIVES', VW / 2 + 30, diffY);
+        const msg2 = '← → choose difficulty      ENTER begin      ESC back';
+        lg.setColor(0.9, 0.85, 0.8, a);
+        lg.print(msg2, VW / 2 - FONT_HUD.getWidth(msg2) / 2, VH - 44);
+      }
     }
   }
 
@@ -868,28 +922,39 @@
       }
     }
 
-    // two options
-    const opts = ['CONTINUE  ·  LEVEL ' + titleMenu.savedLevel + '  ·  ' + titleMenu.savedDifficulty.toUpperCase(), 'NEW  GAME'];
+    // the variable option list (continue(s) + new Nightmares runs + New Game).
+    // Each row's clickable band and selection carets are sized to the ACTUAL
+    // label width, so the ‹ › never overlap a long option like Continue Nightmares.
+    const kinds = titleMenu.kinds || ['new'];
     const sub = LEVEL_NAMES[titleMenu.savedLevel] || '';
     lg.setFont(FONT_SUB);
-    const oy = [VH * 0.62, VH * 0.72];
-    for (let i = 0; i < 2; i++) {
+    // centre the list well below the title, growing symmetrically with option count
+    const step = VH * 0.072, oyBase = VH * 0.67 - (kinds.length - 1) * step * 0.5;
+    menuRects.length = 0;
+    for (let i = 0; i < kinds.length; i++) {
+      const y = oyBase + i * step;
       const on = (titleMenu.sel === i);
+      const scale = on ? 1.04 : 0.92;
+      const label = titleMenuLabel(kinds[i]);
       const pulse = on ? (0.75 + 0.25 * Math.sin(T * 3)) : 0.42;
       lg.setColor(0.94, 0.89, 0.78, pulse);
-      printSpaced(opts[i], VW / 2, oy[i], FONT_SUB, 5, on ? 1.06 : 0.95);
-      // a rough clickable band around the line
-      menuRects[i] = { x: VW / 2 - 240, y: oy[i] - 6, w: 480, h: 40 };
+      printSpaced(label, VW / 2, y, FONT_SUB, 5, scale);
+      // measured half-width (mirrors printSpaced's spacing math)
+      let total = 0;
+      for (const ch of Array.from(label)) total += FONT_SUB.getWidth(ch) + 5;
+      const halfW = ((total - 5) * scale) / 2;
+      menuRects[i] = { x: VW / 2 - halfW - 20, y: y - 6, w: 2 * (halfW + 20), h: 38 };
       if (on) {
         lg.setColor(0.60, 0.82, 0.78, 0.85);
-        printSpaced('‹', VW / 2 - 230, oy[i], FONT_SUB, 0, 1.1);
-        printSpaced('›', VW / 2 + 222, oy[i], FONT_SUB, 0, 1.1);
+        printSpaced('‹', VW / 2 - halfW - 26, y, FONT_SUB, 0, 1.05);
+        printSpaced('›', VW / 2 + halfW + 26, y, FONT_SUB, 0, 1.05);
       }
-    }
-    if (sub && titleMenu.sel === 0) {
-      lg.setFont(FONT_HUD);
-      lg.setColor(0.72, 0.68, 0.62, 0.8);
-      printSpaced(sub, VW / 2, oy[0] + 26, FONT_HUD, 3, 0.9);
+      if (kinds[i] === 'continue' && on && sub) {
+        lg.setFont(FONT_HUD);
+        lg.setColor(0.72, 0.68, 0.62, 0.8);
+        printSpaced(sub, VW / 2, y + 22, FONT_HUD, 3, 0.9);
+        lg.setFont(FONT_SUB);
+      }
     }
 
     lg.setFont(FONT_HUD);
@@ -912,6 +977,8 @@
   }
 
   function drawOverlays() {
+    // Nightmares mode in-run HUD takes over the whole overlay layer
+    if (PROC.active) { drawProcOverlay(); return; }
     // title menu: witch's symbol + Continue / New Game (drawn over a black world)
     if (titleMenu.active) { drawTitleMenu(); return; }
     // "NYCOSOFT presents" studio card — a clean black screen with fading text
@@ -1223,8 +1290,9 @@
     // Otherwise boot with the "NYCOSOFT presents" studio card (normal first
     // load — never on R, and never in debug mode).
     const saved = DEBUG ? 0 : loadProgress();
-    if (saved >= 2) {
+    if (saved >= 2 || (!DEBUG && hasProcSave())) {
       titleMenu.active = true; titleMenu.sel = 0; titleMenu.savedLevel = saved; titleMenu.savedDifficulty = gameDifficulty; titleMenu.t = 0;
+      rebuildTitleMenu();
     } else if (!DEBUG) {
       studio.active = true; studio.t = 0;
     }
@@ -1393,6 +1461,9 @@
       return;
     }
 
+    // Nightmares mode owns the whole update loop (physics + enemies + goal + music)
+    if (PROC.active) { updateProc(dt); return; }
+
     T = T + dt;
     introT = introT + dt;
     // the author credit is a one-shot: once its display window has passed, don't
@@ -1514,13 +1585,16 @@
       if (l4.phase !== 8) { drawScarf(); drawHero(player); }
     } else {
       if (level === 1) drawCastle(CASTLE_X, PROM_Y);
-      if (level === 6) { drawStream6(); drawGiantTree6(); }   // rivers/cascades + the giant tree sit BEHIND the branches
+      if (level === 6 && !PROC.active) { drawStream6(); drawGiantTree6(); }   // rivers/cascades + the giant tree sit BEHIND the branches
       drawPlats();
       if (level === 1) drawFlyingCarpet(-120, 1420, 1.7);   // magic carpet hovering over the high left cliff
-      if (level === 2) drawEnts2();
-      if (level === 3) drawEnts3();
-      if (level === 5) drawEnts5();
-      if (level === 6) drawEnts6();
+      if (PROC.active) drawProc();
+      else {
+        if (level === 2) drawEnts2();
+        if (level === 3) drawEnts3();
+        if (level === 5) drawEnts5();
+        if (level === 6) drawEnts6();
+      }
     }
     drawDusts();
     // during the stair-climb finale the real hero is replaced by the backlit
@@ -1596,17 +1670,18 @@
 
   love.keypressed = function (key) {
     if (key === 'escape') { love.event.quit(); }
+    // Nightmares run: R/Enter/game-over handled here, gameplay keys fall through
+    if (PROC.active) { if (procGameKey(key)) return; }
     // title menu: ↑/↓ choose, Enter/Space confirm
     if (titleMenu.active) {
-      if (key === 'up' || key === 'down' || key === 'w' || key === 's' || key === 'left' || key === 'right') {
-        titleMenu.sel = 1 - titleMenu.sel;
-      } else if (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x') {
-        startFromMenu(titleMenu.sel === 0);
-      }
+      const n = (titleMenu.kinds || []).length || 1;
+      if (key === 'up' || key === 'w' || key === 'left') { titleMenu.sel = (titleMenu.sel - 1 + n) % n; }
+      else if (key === 'down' || key === 's' || key === 'right') { titleMenu.sel = (titleMenu.sel + 1) % n; }
+      else if (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x') { titleMenuConfirm(); }
       return;
     }
     // debug (?debug=…): number keys jump straight to a level
-    if (DEBUG && (key === '1' || key === '2' || key === '3' || key === '4' || key === '5' || key === '6')) { initLevel(Number(key)); return; }
+    if (DEBUG && !PROC.active && (key === '1' || key === '2' || key === '3' || key === '4' || key === '5' || key === '6')) { initLevel(Number(key)); return; }
     if (key === 'r') { initLevel(level); return; }
     // Level 6 arrival: Enter / Space skips through the Witch's dialogue lines
     if (level === 6 && l6.arrival && l6.arrival.active) {
@@ -1620,18 +1695,23 @@
     if (level === 1 && cine.on && cine.stage === 4 && cine.hintA >= 0.95) {
       // Normal is selected by default. Mobile keeps LEFT/RIGHT visible here;
       // ENTER confirms the current choice.
-      if (key === 'left' || key === 'a' || key === 'up' || key === 'w') {
-        cine.difficultySel = 0;
-        return;
-      }
-      if (key === 'right' || key === 'd' || key === 'down' || key === 's') {
-        cine.difficultySel = 1;
-        return;
-      }
-      if (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x') {
-        saveDifficulty(cine.difficultySel === 1 ? 'easy' : 'normal');
-        initLevel(2);
-        return;
+      const arrow = (key === 'left' || key === 'a' || key === 'right' || key === 'd'
+        || key === 'up' || key === 'w' || key === 'down' || key === 's');
+      const confirm = (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x');
+      if ((cine.cardStage || 0) === 0) {
+        // step 1 — mode: START THE ADVENTURE (0) / NIGHTMARES MODE (1)
+        if (arrow) { cine.modeSel = cine.modeSel ? 0 : 1; return; }
+        if (confirm) { cine.cardStage = 1; cine.difficultySel = 0; return; }
+      } else {
+        // step 2 — difficulty: NORMAL (0) / EASY (1)
+        if (arrow) { cine.difficultySel = cine.difficultySel ? 0 : 1; return; }
+        if (key === 'escape') { cine.cardStage = 0; return; }
+        if (confirm) {
+          const diff = cine.difficultySel === 1 ? 'easy' : 'normal';
+          if (cine.modeSel === 1) { startProceduralRun(diff); }
+          else { saveDifficulty(diff); initLevel(2); }
+          return;
+        }
       }
     } else if (level === 1 && cine.on && cine.stage >= 3) {
       // The title card is still arriving: ignore confirm keys so the player
@@ -1672,7 +1752,7 @@
       if (sfxSwing) sfxSwing.play(0.3, 1.25);
       return;
     }
-    const hasFire = ((level === 5 || level === 6) && player.lavaSword);
+    const hasFire = ((level === 5 || level === 6 || PROC.active) && player.lavaSword);
     const riposteReady = (player && (player.riposte || 0) > 0 && (player.riposteHits || 0) > 0);
     if ((key === 'x' || key === 'f') && swordLevel && player.hasSword && !l5busy && !(hasFire && fireCharging(player))
       && (player.state === 'ground' || player.state === 'air')
@@ -1693,7 +1773,11 @@
     // block / parry (Level 2 / 3, with a sword). On Level 5 the Fire-Sword's
     // recharge is a 1-second BLOCK HOLD (handled continuously in updateFireCharge),
     // so a tap here does nothing for it.
-    if (key === 'c' && swordLevel && player.hasSword && !l5busy && !hasFire
+    // BLOCK / parry — always available, the same way in every level. With the
+    // Fire-Sword out, the same key ALSO recharges on a sustained hold (see
+    // updateFireCharge); a quick tap just parries. The guard is a limited window,
+    // not a permanent shield.
+    if (key === 'c' && swordLevel && player.hasSword && !l5busy
       && (player.atkT || 0) <= 0 && (player.state === 'ground' || player.state === 'air')) {
       player.blockT = BLOCK_DUR;
       player.swordIdle = 0;
@@ -1702,20 +1786,20 @@
 
   // title menu: click either option (hover highlights via the pointer)
   love.mousepressed = function (mx, my, button) {
-    if (!titleMenu.active || button !== 1) return;
     const S = titleMenu._S || 1, ox = titleMenu._ox || 0, oy = titleMenu._oy || 0;
     const vx = (mx - ox) / S, vy = (my - oy) / S;
+    if (!titleMenu.active || button !== 1) return;
     for (let i = 0; i < menuRects.length; i++) {
       const r = menuRects[i];
       if (r && vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h) {
-        titleMenu.sel = i; startFromMenu(i === 0); return;
+        titleMenu.sel = i; titleMenuConfirm(); return;
       }
     }
   };
   love.mousemoved = function (mx, my) {
-    if (!titleMenu.active) return;
     const S = titleMenu._S || 1, ox = titleMenu._ox || 0, oy = titleMenu._oy || 0;
     const vx = (mx - ox) / S, vy = (my - oy) / S;
+    if (!titleMenu.active) return;
     for (let i = 0; i < menuRects.length; i++) {
       const r = menuRects[i];
       if (r && vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h) { titleMenu.sel = i; return; }
@@ -1735,6 +1819,7 @@
     // its gameplay buttons (movement/jump/attack/block), keeping only R / ENTER
     inCutscene: function () {
       return titleMenu.active
+        || (PROC.active && PROC.won)
         || level === 4
         || (level === 1 && cine.on)
         || (level === 2 && (l2.endStage || 0) > 0)
@@ -1755,6 +1840,10 @@
     l6: function () { return l6; },
     difficulty: function () { return gameDifficulty; },
     setDifficulty: function (value) { return saveDifficulty(value); },
+    proc: function () { return PROC; },
+    music: function () { return { musicVol: musicVol, battleVol: battleVol, windVol: windVol }; },
+    startProc: function (d) { startProceduralRun(d === 'easy' ? 'easy' : 'normal'); },
+    procGoto: function (i) { if (!PROC.active) startProceduralRun('easy'); PROC.index = i | 0; initProcStage(PROC.index); },
     giveSword: function () { player.hasSword = true; player.drawT = 0; },
     drawHero: function () { drawHero(player); },
     drawSkel: function (sk) { drawSkel(sk); },

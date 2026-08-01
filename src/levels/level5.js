@@ -710,18 +710,28 @@ function startFlightFall(p) {
 // 1-second HOLD-to-charge; you cannot shoot while charging (applies on the
 // ground too, wherever the Fire-Sword is used)
 const CHARGE_TIME = 1.0;
+// The Fire-Sword block, shared by story L5/L6 AND Nightmares mode. It is a normal
+// BLOCK/parry in every way (the press sets blockT = BLOCK_DUR in keypressed) — it
+// is NOT held up forever. The only extra: while the bullets are NOT full, HOLDING
+// block keeps the guard live for the recharge window (so it parries, exactly like
+// a no-fire block, just longer); once the ~CHARGE_TIME hold completes the bullets
+// refill and the guard drops on its own even if still held. Releasing early (or
+// already being full) cancels the recharge and the guard decays normally — i.e.
+// identical to the no-fire-sword block.
 function updateFireCharge(p, dt) {
-  if (!((level === 5 || level === 6) && p.lavaSword)) return;
+  if (!p.lavaSword) return;
   const blocking = love.keyboard.isDown('c');
   if (blocking && (p.lavaCharge || 0) < 3) {
     p.blockHold = (p.blockHold || 0) + dt;
-    p.blockT = Math.max(p.blockT || 0, 0.15);   // hold the block pose while charging
     if (p.blockHold >= CHARGE_TIME) {
       p.lavaCharge = 3; p.blockHold = 0; p.blockFlash = 0.28;
       (level === 6 ? l6toast : l5toast)('The Fire-Sword blazes — 3 lava bullets ready');
+      // no top-up this frame → the guard decays and drops even if still held
+    } else {
+      p.blockT = Math.max(p.blockT || 0, 0.15);   // guard stays live for the recharge window
     }
   } else {
-    p.blockHold = 0;
+    p.blockHold = 0;   // released, or already full → guard decays normally (no top-up)
   }
 }
 // true while the block is being held to recharge (blocks shooting)

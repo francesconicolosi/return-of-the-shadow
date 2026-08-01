@@ -169,16 +169,33 @@ function drawSkel(sk) {
   lg.push();
   lg.translate(sk.x, sk.y);
   if (sk.state === 'pile') {
-    lg.setColor(BONE[0], BONE[1], BONE[2], 1);
+    // a skeleton felled by the Fire-Sword burns as it dies — chars dark under
+    // rising flame tongues for ~1s, then settles to a normal bone pile
+    const burning = sk.burning && (sk.burnT || 0) < 1.0;
+    const bfade = burning ? clamp(1 - (sk.burnT || 0) / 1.0, 0, 1) : 0;
+    const bone = burning ? 0.45 + 0.25 * bfade : 1;   // charred while ablaze
+    lg.setColor(BONE[0] * bone, BONE[1] * bone, BONE[2] * bone, 1);
     lg.circle('fill', -10, -7, 5.5);
     lg.setColor(0.1, 0.1, 0.12, 1);
     lg.circle('fill', -11.5, -7.5, 1.3);
-    lg.setColor(BONE[0], BONE[1], BONE[2], 1);
+    lg.setColor(BONE[0] * bone, BONE[1] * bone, BONE[2] * bone, 1);
     lg.setLineWidth(3);
     lg.line(-2, -3, 14, -6);
     lg.line(0, -8, 12, -2);
     lg.line(4, -12, 16, -12);
     lg.setLineWidth(1);
+    if (burning) {
+      lg.setColor(1.0, 0.5, 0.14, 0.22 * bfade);   // heat glow
+      lg.circle('fill', 2, -6, 12);
+      for (let i = -1; i <= 1; i++) {               // flickering flame tongues
+        const fx = 2 + i * 6 + Math.sin((T + i * 1.7) * 13) * 2;
+        const fh = 13 + 6 * Math.sin(T * 17 + i * 2);
+        lg.setColor(1.0, 0.38, 0.07, 0.55 * bfade);
+        lg.polygon('fill', fx - 4, -4, fx + 4, -4, fx, -4 - fh);
+        lg.setColor(1.0, 0.78, 0.24, 0.6 * bfade);
+        lg.polygon('fill', fx - 2.2, -4, fx + 2.2, -4, fx, -4 - fh * 0.6);
+      }
+    }
     lg.pop();
     return;
   }

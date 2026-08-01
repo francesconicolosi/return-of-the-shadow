@@ -25,7 +25,7 @@ const COYOTE = 0.10;
 const JBUF = 0.13;
 const SCARF_N = 6;          // cape node count (fewer = shorter cape)
 const SCARF_SEG = 5.0;      // cape segment rest length; max cape ≈ (SCARF_N-1)*SCARF_SEG
-const BUILD = '2026-08-01-L6f';  // shown on-screen (bottom-left) so a stale cached copy is obvious
+const BUILD = '2026-08-02-PROC';  // shown on-screen (bottom-left) so a stale cached copy is obvious
 
 const CINE_TRIGGER_X = 5980;
 const CINE_STOP_X = 6180;
