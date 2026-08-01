@@ -203,7 +203,7 @@ let plats6 = [
   tb([11150, 11350, 11550], -108);
   tb([11250, 11450], -176);
   tb([11150, 11350, 11550], -244);
-  plats6.push({ x: 11290, y: -312, w: 170, h: 16, beam: true, bx: 11290, by: -312, mv: { ax: 10, ay: 12, sp: 1.0, ph: 3.1 } });  // KEY branch (top)
+  plats6.push({ x: 11290, y: -312, w: 170, h: 16, beam: true });   // KEY branch — STATIC so the caged key stays reachable
 })();
 let checkpoints6 = [
   { x: 260,  y: FLOOR6 }, { x: 1120, y: FLOOR6 }, { x: 2450, y: FLOOR6 },

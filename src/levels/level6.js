@@ -59,15 +59,14 @@ function initEnts6() {
     { x: 1355, y: 230, w: 54, gate: 'A', pressed: false },       // on TREE 1's top
     { x: 4500, y: FLOOR6, w: 54, gate: 'B', pressed: false },    // S2a
     { x: 5650, y: FLOOR6, w: 54, gate: 'B', pressed: false },    // S2b (both open gate B — cross the bridge to reach it)
-    { x: 6810, y: CANOPY6B, w: 54, gate: 'C', pressed: false },  // on a CANOPY #2 limb (opens the summit gate)
     { x: 7950, y: FLOOR6, w: 54, gate: 'D', pressed: false },    // S3a
     { x: 9050, y: FLOOR6, w: 54, gate: 'D', pressed: false },    // S3b (both open gate D)
   ];
+  // (the summit hut is gated by the KEY alone — no separate gate there)
   l6.gates = [
     { id: 'A', x: 1930, w: 22, yTop: 40, yBot: FLOOR6, openT: 0, open: false, locked: true },
     { id: 'B', x: 5880, w: 22, yTop: 40, yBot: FLOOR6, openT: 0, open: false, locked: true },
     { id: 'D', x: 9300, w: 22, yTop: 40, yBot: FLOOR6, openT: 0, open: false, locked: true },
-    { id: 'C', x: 13100, w: 22, yTop: 20, yBot: CAPANNA_Y, openT: 0, open: false, locked: true },
   ];
   l6.bullets = [];
 
@@ -161,9 +160,9 @@ function updateArrival6(dt) {
     if (k >= 1) { p.y = FLOOR6; p.state = 'ground'; a.phase = 'away'; a.t = 0; }
   } else if (a.phase === 'away') {
     p.state = 'ground'; p.y = FLOOR6; p.vx = 0; p.facing = 1;
-    cp.x += 130 * dt; cp.y -= 78 * dt;
-    if (a.t > 1.7) {
-      cp.gone = true; a.phase = 'witch'; a.t = 0;
+    if (!cp.flyAway) { cp.flyAway = true; cp.vx = 150; cp.vy = -70; }   // launch it up-and-right
+    if (a.t > 1.2) {   // the Witch fades in while the carpet is still flying off
+      a.phase = 'witch'; a.t = 0;
       l6.witch = { x: 620, y: FLOOR6, appear: 0, leave: 0, gone: false };
       queueWitchDialog();
     }
@@ -182,6 +181,14 @@ function updateArrival6(dt) {
         l6toast('The wood watches. Press on.');
       }
     }
+  }
+
+  // keep the freed carpet visibly flying up-and-off the screen (never a sudden pop)
+  if (cp && cp.flyAway && !cp.gone) {
+    cp.vx += 70 * dt; cp.vy -= 46 * dt;   // accelerate away
+    cp.x += cp.vx * dt; cp.y += cp.vy * dt;
+    const camR = cam.x + VW * 0.62 / cam.zoom + 120, camT = cam.y - VH * 0.62 / cam.zoom - 120;
+    if (cp.x > camR || cp.y < camT) cp.gone = true;
   }
 }
 
@@ -237,6 +244,16 @@ function updateEnts6(dt) {
   const p = player;
   l6.msgT = Math.max(0, l6.msgT - dt);
   updateFireCharge(p, dt);   // the Fire-Sword recharge (generalized to L6)
+
+  // finish the carpet's flight off-screen even after the cutscene has ended (so a
+  // skipped intro never leaves it frozen / popping out mid-air)
+  const cp = l6.carpet;
+  if (cp && cp.flyAway && !cp.gone) {
+    cp.vx = (cp.vx || 0) + 70 * dt; cp.vy = (cp.vy || 0) - 46 * dt;
+    cp.x += cp.vx * dt; cp.y += cp.vy * dt;
+    const camR = cam.x + VW * 0.62 / cam.zoom + 120, camT = cam.y - VH * 0.62 / cam.zoom - 120;
+    if (cp.x > camR || cp.y < camT) cp.gone = true;
+  }
 
   // souls drifting in the glowing rivers
   for (const so of l6.souls) {

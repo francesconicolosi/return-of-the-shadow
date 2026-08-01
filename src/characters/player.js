@@ -22,7 +22,10 @@ const ledges = [], faces = [];
 function buildLevel() {
   ledges.length = 0; faces.length = 0;
   for (const p of plats) {
-    if (!p.beam) {
+    // floating/moving platforms (mv) create NO ledges or climb-faces: their edges
+    // drift, so a grabbed ledge would strand the hero in mid-air. He lands on top
+    // instead (and is carried by updateMovingPlats6).
+    if (!p.beam && !p.mv) {
       ledges.push({ x: p.x, y: p.y, side: -1 });
       ledges.push({ x: p.x + p.w, y: p.y, side: 1 });
       if (p.climbL) {
