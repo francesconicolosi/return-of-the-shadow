@@ -717,9 +717,9 @@ function drawWitch6() {
   if (a <= 0) return;
   const float = Math.sin(T * 1.5) * 4;
   lg.push();
-  // drawn at ~hero scale (she is not a giant): scale 0.42 about her feet
+  // drawn a touch larger than the hero (a looming apparition): scale 0.54
   lg.translate(w.x, w.y - 28 + float);
-  lg.scale(0.42, 0.42);
+  lg.scale(0.54, 0.54);
   // cold aura
   lg.setColor(0.4, 0.8, 0.75, 0.12 * a); lg.circle('fill', 0, -18, 62);
   // ragged spectral robe
@@ -738,8 +738,10 @@ function drawWitch6() {
   // glowing eyes
   lg.setColor(0.6, 0.98, 0.9, a);
   lg.circle('fill', -4.5, -54, 2.1); lg.circle('fill', 4.5, -54, 2.1);
-  // her sigil hovering above
-  drawEmblem(0, -104 - float * 0.4, 22, 0.7 * a, null);
+  // her sigil hovering above — clearly visible, with a soft halo behind it
+  const sy = -112 - float * 0.4;
+  lg.setColor(0.45, 0.85, 0.78, 0.18 * a); lg.circle('fill', 0, sy, 46);
+  drawEmblem(0, sy, 34, a, null);
   lg.pop();
 }
 

@@ -41,10 +41,18 @@ const PROC = {
   lava: [],                  // molten pools filling gaps (lava theme) {x0,x1,y}
   skels: [], biters: [], sentinels: [],
   lives: 5,
+  score: 0,                  // banked score from completed stages (+ bonuses)
+  levelScore: 0,             // this stage's tentative score — lost on a full wipe
   stageT: 0, cleared: false, wonT: 0,
   gameOver: false, won: false,
   _hitSwing: false,
 };
+
+// score awards
+const SCORE_SKELETON = 1000, SCORE_BITER = 500, SCORE_SENTINEL = 2000;
+const SCORE_FLIGHT = 10000, SCORE_BOSS = 10000;
+const SCORE_LIFE_LOST = 200;   // penalty deducted from the total per life spent
+function procScore() { return Math.max(0, (PROC.score || 0) + (PROC.levelScore || 0)); }
 
 // -------------------------------------------------------------- difficulty knobs
 function procMaxLives() { return PROC.difficulty === 'easy' ? 5 : 3; }
@@ -69,6 +77,7 @@ function saveProc() {
     localStorage.setItem(PROC_SAVE_KEY, JSON.stringify({
       v: 1, difficulty: PROC.difficulty, seed: PROC.seed,
       types: PROC.types, bossType: PROC.bossType, index: PROC.index,
+      score: PROC.score || 0,
     }));
   } catch (e) {}
 }
@@ -90,6 +99,7 @@ function normalizeProcDiff(d) { return d === 'easy' ? 'easy' : 'normal'; }
 function procGenerateRun(seed, diff) {
   PROC.seed = seed; PROC.difficulty = normalizeProcDiff(diff); PROC.index = 0;
   PROC.lives = procMaxLives();
+  PROC.score = 0; PROC.levelScore = 0;
   const rng = love.math.newRandomGenerator(seed >>> 0);
   const bag = PROC_KINDS.slice();
   for (let i = bag.length - 1; i > 0; i--) {   // Fisher–Yates shuffle the full kind set
@@ -136,6 +146,7 @@ function continueProceduralRun() {
   PROC.types = s.types; PROC.bossType = s.bossType === 'lava' ? 'lava' : 'castle';
   PROC.index = Math.max(0, Math.min(PROC_STAGES, s.index | 0));
   PROC.lives = procMaxLives();
+  PROC.score = Number.isFinite(s.score) ? s.score : 0; PROC.levelScore = 0;
   PROC.active = true;
   PROC.gameOver = false; PROC.won = false;
   titleMenu.active = false; studio.active = false; cine.on = false;
@@ -158,6 +169,7 @@ function procResetSharedState() {
 function initProcStage(index) {
   PROC.index = index;
   PROC.stageT = 0; PROC.cleared = false; PROC.gameOver = false; PROC._hitSwing = false;
+  PROC.levelScore = 0;   // fresh stage: the tentative score starts at zero
   procResetSharedState();
   PROC.skels.length = 0; PROC.biters.length = 0; PROC.sentinels.length = 0; PROC.lava.length = 0;
   applyProcDifficulty();
@@ -464,6 +476,9 @@ function procHurtKnight(k, dir) {
 
 // -------------------------------------------------------------- run flow
 function procStageComplete() {
+  // clearing a carpet-flight section is worth a bonus; then bank the level's score
+  if (PROC.stageKind === 'flight') PROC.levelScore += SCORE_FLIGHT;
+  PROC.score = Math.max(0, PROC.score + PROC.levelScore); PROC.levelScore = 0;   // safely banked
   PROC.index += 1;
   saveProc();
   initProcStage(PROC.index);   // PROC.index === PROC_STAGES routes to the boss
@@ -471,6 +486,7 @@ function procStageComplete() {
 
 function procWin() {
   if (PROC.won) return;
+  PROC.score = Math.max(0, PROC.score + PROC.levelScore + SCORE_BOSS); PROC.levelScore = 0;   // boss-fight bonus
   PROC.won = true; PROC.wonT = 0;
   clearProc();
   if (sfxParry) sfxParry.play(0.5, 1.2);
@@ -514,6 +530,10 @@ function updateProcEnemies(dt) {
   for (const sk of PROC.skels) { updateSkel(sk, dt, p); if (sk.burning) sk.burnT = (sk.burnT || 0) + dt; }
   for (const bt of PROC.biters) updateBiter(bt, dt, p);
   for (const s of PROC.sentinels) updateSentinel(s, dt, p);
+  // score each foe once, the moment it dies (shoved into lava/hole, or burned)
+  for (const sk of PROC.skels) if (!sk.scored && (sk.state === 'gone' || sk.state === 'pile')) { sk.scored = true; PROC.levelScore += SCORE_SKELETON; }
+  for (const bt of PROC.biters) if (!bt.scored && bt.state === 'dead') { bt.scored = true; PROC.levelScore += SCORE_BITER; }
+  for (const s of PROC.sentinels) if (!s.scored && s.state === 'dead') { s.scored = true; PROC.levelScore += SCORE_SENTINEL; }
 
   const au = 1 - (p.atkT || 0) / ATK_DUR;
   if ((p.atkT || 0) > 0 && au > 0.30 && au < 0.56) {
@@ -695,6 +715,12 @@ function drawProcOverlay() {
     }
   }
 
+  // running score, top-right (banked stages + this stage's tentative points)
+  lg.setFont(FONT_HUD);
+  const st = 'SCORE  ' + procScore();
+  lg.setColor(0.96, 0.90, 0.66, 0.95);
+  lg.print(st, VW - 30 - FONT_HUD.getWidth(st), 30);
+
   // stage banner: "CASTLE · DEPTH 3 / 10" fading in at the start of each stage
   let a = 0;
   if (PROC.stageT > 0.4 && PROC.stageT < 4.6) a = Math.min((PROC.stageT - 0.4) / 1.0, 1) * Math.min((4.6 - PROC.stageT) / 1.0, 1);
@@ -710,10 +736,12 @@ function drawProcOverlay() {
   if (PROC.gameOver) {
     lg.setColor(0.03, 0.0, 0.02, 0.9); lg.rectangle('fill', 0, 0, VW, VH);
     lg.setFont(FONT_SUB); lg.setColor(0.72, 0.12, 0.14, 1);
-    printSpaced('GAME  OVER', VW / 2, VH / 2 - 28, FONT_SUB, 6, 1);
-    lg.setFont(FONT_HUD); lg.setColor(0.9, 0.86, 0.82, 0.9);
-    const m = 'Press  R  to  try  again  ·  ESC  to  quit';
-    lg.print(m, VW / 2 - FONT_HUD.getWidth(m) / 2, VH / 2 + 24);
+    printSpaced('GAME  OVER', VW / 2, VH / 2 - 36, FONT_SUB, 6, 1);
+    lg.setFont(FONT_HUD); lg.setColor(0.86, 0.82, 0.9, 0.9);
+    printSpaced('SCORE  ' + PROC.score + '  ·  this depth lost', VW / 2, VH / 2 + 2, FONT_HUD, 3, 1);
+    lg.setColor(0.9, 0.86, 0.82, 0.9);
+    const m = 'Press  R  to  retry  this  depth  ·  ESC  to  quit';
+    lg.print(m, VW / 2 - FONT_HUD.getWidth(m) / 2, VH / 2 + 30);
   }
   if (PROC.won) {
     const fade = smooth(clamp(PROC.wonT / 1.4, 0, 1));
@@ -723,6 +751,8 @@ function drawProcOverlay() {
       printSpaced('THE  NIGHTMARE  IS  CONQUERED', VW / 2, VH / 2 - 30, FONT_SUB, 5, 1);
       lg.setColor(0.80, 0.78, 0.86, fade * 0.9);
       printSpaced('TEN  DEPTHS  ·  ' + PROC.difficulty.toUpperCase() + '  ·  A  BOSS  FELLED', VW / 2, VH / 2 + 6, FONT_HUD, 3, 1);
+      lg.setColor(0.96, 0.90, 0.66, fade);
+      printSpaced('FINAL  SCORE  ' + PROC.score, VW / 2, VH / 2 + 26, FONT_HUD, 3, 1);
       if (PROC.wonT > 2.0) {
         lg.setColor(0.9, 0.85, 0.8, 0.4 + 0.4 * (0.5 + 0.5 * Math.sin(T * 3)));
         const m = 'Press  ENTER  to  return  to  the  title';

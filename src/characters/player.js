@@ -930,6 +930,7 @@ function updatePlayer(dt, p) {
       if (PROC.active) {
         PROC.lives = (PROC.lives || 0) - 1;
         if (PROC.lives <= 0) { PROC.gameOver = true; p.deadFade = 1; return; }
+        PROC.levelScore = (PROC.levelScore || 0) - SCORE_LIFE_LOST;   // spending a life costs score
         respawnPlayer(p); p.dying = false; p.deadFade = 0.999;
       } else {
       // in the keep, dying costs a life; run out of lives → game over
