@@ -617,7 +617,7 @@
   }
   function saveProgress(n) {
     try {
-      if (n >= 2 && n <= 6) {
+      if (n >= 2 && n <= 7) {
         localStorage.setItem(SAVE_KEY, String(n));
         localStorage.setItem(DIFFICULTY_KEY, gameDifficulty);
       }
@@ -626,7 +626,7 @@
   function loadProgress() {
     try {
       const v = parseInt(localStorage.getItem(SAVE_KEY), 10);
-      return (Number.isFinite(v) && v >= 2 && v <= 6) ? v : 0;
+      return (Number.isFinite(v) && v >= 2 && v <= 7) ? v : 0;
     } catch (e) { return 0; }
   }
   function clearProgress() {
@@ -761,6 +761,7 @@
     else if (n === 2) { plats = plats2; checkpoints = checkpoints2; }
     else if (n === 5) { plats = plats5; checkpoints = checkpoints5; }
     else if (n === 6) { plats = plats6; checkpoints = checkpoints6; }
+    else if (n === 7) { plats = plats7; checkpoints = checkpoints7; }
     else { plats = plats3; checkpoints = checkpoints3; }
     buildLevel();
     respawn = { x: checkpoints[0].x, y: checkpoints[0].y };
@@ -772,6 +773,11 @@
       musicSrc.stop(); musicSrc.setVolume(0);
       if (n >= 2) musicSrc.play();
     }
+    // silence any battle theme carried over (e.g. a Nightmares run left it playing,
+    // or a prior boss fight); it loops on silently and the level's own audio logic
+    // ramps it back up when a fight actually begins (matches initL4).
+    battleVol = 0; bossWasFighting = false;
+    if (battleSrc) battleSrc.setVolume(0);
     if (n === 2) initEnts2();
     if (n === 3) initEnts3();
     if (n === 5) initEnts5();
@@ -818,6 +824,9 @@
       player.lavaSword = true; player.lavaCharge = 3;
       startArrival6();
     }
+    // Level 7 is a screen-space cutscene (like Level 4): its own scripted state
+    // machine drives the King through the Witch's visions to the mirror.
+    if (n === 7) { introT = 999; startL7(); }
   }
   love.initLevel = initLevel;
 
@@ -898,7 +907,7 @@
   const LEVEL_NAMES = {
     2: "THE  WITCH'S  KEEP", 3: 'THE  BLACK  HALLS',
     4: 'SOME  TIME  BEFORE', 5: 'THE  LAVA  CAVERNS',
-    6: 'THE  ENCHANTED  WOOD',
+    6: 'THE  ENCHANTED  WOOD', 7: 'THE  HOUSE  IN  THE  FOREST',
   };
   // Rects for the two menu options, filled in during drawTitleMenu so a mouse
   // click (love.mousepressed) can hit-test them.
@@ -981,6 +990,8 @@
     if (PROC.active) { drawProcOverlay(); return; }
     // title menu: witch's symbol + Continue / New Game (drawn over a black world)
     if (titleMenu.active) { drawTitleMenu(); return; }
+    // Level 7 (screen-space cutscene) owns its whole overlay layer
+    if (level === 7) { drawL7Overlay(); return; }
     // "NYCOSOFT presents" studio card — a clean black screen with fading text
     if (studio.active) {
       lg.setColor(0, 0, 0, 1);
@@ -1276,7 +1287,7 @@
       if (m) {
         DEBUG = true;
         const n = Number(decodeURIComponent(m[1]));
-        if (Number.isFinite(n) && n >= 1 && n <= 6) startLevel = Math.floor(n);
+        if (Number.isFinite(n) && n >= 1 && n <= 7) startLevel = Math.floor(n);
       }
       // ?immortal=true — the hero cannot be hurt or die (debug aid; combine like
       // ?debug=5&immortal=true)
@@ -1473,6 +1484,18 @@
     // Level 4 is a scripted cutscene — its own update, no platformer physics
     if (level === 4) { updateL4(dt); updateScarf(dt); updateParticles(dt); return; }
 
+    // Level 7 is a screen-space cutscene: its state machine owns the loop and
+    // pins the camera at screen centre (world coords == screen coords). It drives
+    // the player itself (walking, with a slow cap) only in the two "house" beats.
+    if (level === 7) {
+      updateL7(dt); updateScarf(dt); updateParticles(dt);
+      cam.x = VW / 2; cam.y = VH / 2; cam.zoom = 1;
+      windVol = lerp(windVol, 0, Math.min(1, dt * 2.5)); if (windSrc) windSrc.setVolume(windVol);
+      if (battleSrc) { battleVol = lerp(battleVol, 0, Math.min(1, dt * 2.0)); battleSrc.setVolume(battleVol); }
+      if (musicSrc) { musicVol = lerp(musicVol, 0.3, Math.min(1, dt * 0.6)); musicSrc.setVolume(musicVol); }
+      return;
+    }
+
     // GAME OVER freezes the world; only R (keypressed) restarts the level
     if (level === 2 && l2.gameOver) return;
     if (level === 3 && l3.gameOver) return;
@@ -1566,7 +1589,7 @@
     lg.push();
     lg.scale(1 / PIX);
 
-    if (level === 1) drawBackground(cam); else if (level === 4) drawBalconyBack(); else if (level === 5) drawBackground5(cam); else if (level === 6) drawBackground6(cam); else drawBackground2(cam);
+    if (level === 1) drawBackground(cam); else if (level === 4) drawBalconyBack(); else if (level === 5) drawBackground5(cam); else if (level === 6) drawBackground6(cam); else if (level === 7) drawBackground7(cam); else drawBackground2(cam);
 
     lg.push();
     lg.translate(VW / 2, VH / 2);
@@ -1583,6 +1606,11 @@
       if (l4.servant) drawServant(l4.servant);
       if (l4.child) drawChild(l4.child);
       if (l4.phase !== 8) { drawScarf(); drawHero(player); }
+    } else if (level === 7) {
+      // screen-space cutscene: mid-ground props, the King, then the occluders
+      drawL7Mid();
+      drawScarf(); drawHero(player);
+      drawL7Front();
     } else {
       if (level === 1) drawCastle(CASTLE_X, PROM_Y);
       if (level === 6 && !PROC.active) { drawStream6(); drawGiantTree6(); }   // rivers/cascades + the giant tree sit BEHIND the branches
@@ -1602,7 +1630,7 @@
     // Falling into lava: the body vanishes on the spot (only the fiery splash
     // "schizzo" remains) instead of visibly sinking down through the molten pool.
     const heroInLava = (player.dying && player.lavaSink != null);
-    if (level !== 4 && !(level === 2 && l2.endStage > 0) && !heroInLava && !(level === 6 && l6.end.stage >= 1)) {
+    if (level !== 4 && level !== 7 && !(level === 2 && l2.endStage > 0) && !heroInLava && !(level === 6 && l6.end.stage >= 1)) {
       // Level 5: the carpet flight seats the hero atop the flying carpet. (The
       // wake-up "getting up" is handled inside drawHero via wakePose/o.rot.)
       if (level === 5 && l5.carpet && l5.carpet.state === 'riding') {
@@ -1681,8 +1709,13 @@
       return;
     }
     // debug (?debug=…): number keys jump straight to a level
-    if (DEBUG && !PROC.active && (key === '1' || key === '2' || key === '3' || key === '4' || key === '5' || key === '6')) { initLevel(Number(key)); return; }
+    if (DEBUG && !PROC.active && (key === '1' || key === '2' || key === '3' || key === '4' || key === '5' || key === '6' || key === '7')) { initLevel(Number(key)); return; }
     if (key === 'r') { initLevel(level); return; }
+    // Level 7 cutscene: Enter / Space skips the current line of dialogue
+    if (level === 7) {
+      if (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x') l7Skip();
+      return;
+    }
     // Level 6 arrival: Enter / Space skips through the Witch's dialogue lines
     if (level === 6 && l6.arrival && l6.arrival.active) {
       if (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x') {

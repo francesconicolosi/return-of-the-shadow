@@ -595,7 +595,21 @@ const L2_TORCHES = [[260, 812], [700, 812], [1420, 656], [1820, 656], [2210, 656
   [4360, 296], [4780, 296], [5140, 296], [5540, 296], [5920, 296], [6320, 296],
   [5060, 858], [5700, 858]];   // basement torches (key vault)
 
+// the Witch's sigil, hung as banners on the keep walls (same emblem as the
+// Level 7 cinematic) — a couple along the upper halls
+const L2_BANNERS = [{ x: 3620, y: 108 }, { x: 4780, y: 108 }, { x: 5920, y: 108 }];
+function drawKeepEmblems2() {
+  for (const b of L2_BANNERS) {
+    const x = b.x, y = b.y, w = 66, h = 150;
+    lg.setColor(0.06, 0.05, 0.09, 0.92); lg.rectangle('fill', x - w / 2, y, w, h);          // banner cloth
+    lg.setColor(0.11, 0.09, 0.15, 0.92); lg.rectangle('fill', x - w / 2, y, w, 7);           // rod hem
+    lg.setColor(0.05, 0.04, 0.07, 0.92); lg.polygon('fill', x - w / 2, y + h, x + w / 2, y + h, x, y + h + 20);   // pennant tail
+    drawEmblem(x, y + 72, 27, 0.6, null);
+  }
+}
+
 function drawEnts2() {
+  drawKeepEmblems2();          // the Witch's sigil banners on the keep walls
   drawCastleDoor2(150, 900);   // grand entrance at the start of the level
   for (const tc of L2_TORCHES) {
     const fl = 0.75 + 0.25 * Math.sin(T * 9 + tc[0]);

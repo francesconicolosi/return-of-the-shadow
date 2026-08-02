@@ -63,33 +63,34 @@
   <!-- ?v is bumped on every release so phones/desktops never run a stale cached
        copy (mobile Safari caches JS very aggressively). Keep it in sync with
        BUILD in game.js. -->
-  <script src="love-shim.js?v=2026-08-02-SCORE"></script>
+  <script src="love-shim.js?v=2026-08-02-L7c"></script>
   <!-- game.js is being split into src/ modules (see plans/modularization-refactor.md).
        These are plain classic scripts loaded IN ORDER — they share one top-level
        scope, so later files resolve earlier declarations by name. -->
-  <script src="src/core/00-namespace.js?v=2026-08-02-SCORE"></script>
-  <script src="src/core/01-constants.js?v=2026-08-02-SCORE"></script>
-  <script src="src/core/02-utils.js?v=2026-08-02-SCORE"></script>
-  <script src="src/core/03-level-data.js?v=2026-08-02-SCORE"></script>
-  <script src="src/core/04-particles.js?v=2026-08-02-SCORE"></script>
-  <script src="src/art/shared-art.js?v=2026-08-02-SCORE"></script>
-  <script src="src/characters/player.js?v=2026-08-02-SCORE"></script>
-  <script src="src/characters/enemies-l2.js?v=2026-08-02-SCORE"></script>
-  <script src="src/characters/enemies-l3.js?v=2026-08-02-SCORE"></script>
-  <script src="src/characters/enemies-l5.js?v=2026-08-02-SCORE"></script>
-  <script src="src/characters/enemies-l6.js?v=2026-08-02-SCORE"></script>
-  <script src="src/characters/cast-l4.js?v=2026-08-02-SCORE"></script>
-  <script src="src/levels/level1.js?v=2026-08-02-SCORE"></script>
-  <script src="src/levels/level2.js?v=2026-08-02-SCORE"></script>
-  <script src="src/levels/level3.js?v=2026-08-02-SCORE"></script>
-  <script src="src/levels/level4.js?v=2026-08-02-SCORE"></script>
-  <script src="src/levels/level5.js?v=2026-08-02-SCORE"></script>
-  <script src="src/levels/level6.js?v=2026-08-02-SCORE"></script>
-  <script src="src/levels/procedural.js?v=2026-08-02-SCORE"></script>
+  <script src="src/core/00-namespace.js?v=2026-08-02-L7c"></script>
+  <script src="src/core/01-constants.js?v=2026-08-02-L7c"></script>
+  <script src="src/core/02-utils.js?v=2026-08-02-L7c"></script>
+  <script src="src/core/03-level-data.js?v=2026-08-02-L7c"></script>
+  <script src="src/core/04-particles.js?v=2026-08-02-L7c"></script>
+  <script src="src/art/shared-art.js?v=2026-08-02-L7c"></script>
+  <script src="src/characters/player.js?v=2026-08-02-L7c"></script>
+  <script src="src/characters/enemies-l2.js?v=2026-08-02-L7c"></script>
+  <script src="src/characters/enemies-l3.js?v=2026-08-02-L7c"></script>
+  <script src="src/characters/enemies-l5.js?v=2026-08-02-L7c"></script>
+  <script src="src/characters/enemies-l6.js?v=2026-08-02-L7c"></script>
+  <script src="src/characters/cast-l4.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/level1.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/level2.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/level3.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/level4.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/level5.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/level6.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/level7.js?v=2026-08-02-L7c"></script>
+  <script src="src/levels/procedural.js?v=2026-08-02-L7c"></script>
   <!-- engine core loads LAST: it assigns the love.* callbacks and references
        every symbol above (resolved by name via the shared top-level scope). -->
-  <script src="src/core/engine.js?v=2026-08-02-SCORE"></script>
-  <script src="touch.js?v=2026-08-02-SCORE"></script>
+  <script src="src/core/engine.js?v=2026-08-02-L7c"></script>
+  <script src="touch.js?v=2026-08-02-L7c"></script>
   <script>
     love._run(document.getElementById('game'));
 

@@ -752,11 +752,12 @@ function drawHero(p) {
   setColA(COL.skin);
   lg.circle('fill', hX, hY, 6.2);
   lg.polygon('fill', hX + 2.5, hY + 1.0, hX + 6.2, hY + 1.8, hX + 3.0, hY + 4.4);
-  setColA(COL.hair, 0.9);
+  const hairCol = p.whiteHair ? [0.90, 0.90, 0.92] : COL.hair;
+  setColA(hairCol, 0.9);
   lg.circle('fill', hX + 3.4, hY - 0.6, 0.9);
 
   const g = gust();
-  setColA(COL.hair);
+  setColA(hairCol);
   lg.circle('fill', hX - 1.4, hY - 2.8, 6.0);
   lg.circle('fill', hX + 2.4, hY - 4.2, 3.8);
   lg.polygon('fill',
@@ -998,6 +999,7 @@ function updatePlayer(dt, p) {
       && (p.blockT || 0) <= 0 && (p.atkT || 0) <= 0);
     let max = p.onBeam ? BEAMSPD : RUNSPD;
     if (p.crouch) max = 96;
+    if (p.walkCap) max = Math.min(max, p.walkCap);   // slow, walk-only cutscene pacing (Level 7)
     if (p.landT > 0) dir = 0;
     // while blocking you hold your ground — you can re-orient to face the
     // attacker but you don't advance or retreat

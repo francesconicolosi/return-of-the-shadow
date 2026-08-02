@@ -109,7 +109,7 @@ function initEnts6() {
   l6.lives = difficultyMaxLives(); l6.gameOver = false; l6.msg = ''; l6.msgT = 0;
   l6.dialog = null; l6.dialogQueue = [];
   l6.end = { stage: 0, t: 0 }; l6.hints = {}; l6.capannaNear = false; l6._hitThisSwing = false;
-  l6.witch = null;
+  l6.witch = null; l6._advanced = false;
 }
 
 // -------------------------------------------------------------- arrival cutscene
@@ -221,6 +221,11 @@ function updateEnd6(dt) {
     cam.x = lerp(cam.x, CAPANNA_X + 16, Math.min(1, dt * 2));
     cam.y = lerp(cam.y, CAPANNA_Y - 110, Math.min(1, dt * 2));
     if (e.t > 2.0) { e.stage = 2; e.t = 0; }
+  } else if (e.stage === 2) {
+    // hold on the "into the firelit hut" card, then continue into Level 7 —
+    // the King steps inside the house in the forest
+    p.state = 'ground'; p.vx = 0;
+    if (e.t > 4.2 && !l6._advanced) { l6._advanced = true; initLevel(7); }
   }
 }
 

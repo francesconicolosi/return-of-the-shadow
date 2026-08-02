@@ -767,6 +767,9 @@ function procGameKey(key) {
   if (PROC.won) {
     if (key === 'return' || key === 'space' || key === 'z' || key === 'k' || key === 'x') {
       PROC.active = false; PROC.won = false;
+      // stop the battle theme so it doesn't drone over the title / the next game
+      battleVol = 0; bossWasFighting = false;
+      if (battleSrc) battleSrc.setVolume(0);
       // hand back to the title screen (or the studio card for a clean state)
       titleMenu.active = true; titleMenu.sel = 0;
       titleMenu.savedLevel = loadProgress(); titleMenu.savedDifficulty = gameDifficulty; titleMenu.t = 0;

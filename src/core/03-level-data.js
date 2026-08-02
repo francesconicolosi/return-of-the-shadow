@@ -219,3 +219,16 @@ const FALLS6 = [
   { x: 9950, w: 170 }, { x: 10450, w: 160 },
   { x: 5120, w: 160 }, { x: 8530, w: 160 },
 ];
+
+// -------------------------------------------------------------- LEVEL 7: THE HOUSE IN THE FOREST
+// A fully SCRIPTED cinematic (like Level 4). The King steps into the firelit hut
+// from the summit of Level 6 and the Witch shows him the truth of his family's
+// war-guilt across a series of visions, ending at a mirror that turns his hair
+// white. The camera is locked at screen centre (world coords == screen coords),
+// so the geometry is just one floor the size of the room — the hero only ever
+// walks in the two "house" beats; every other beat repositions him by script.
+const GROUND7 = 512;
+let plats7 = [
+  { x: -400, y: GROUND7, w: 2080, h: 400 },   // the whole room floor (spans well past the screen)
+];
+let checkpoints7 = [ { x: 200, y: GROUND7 } ];
